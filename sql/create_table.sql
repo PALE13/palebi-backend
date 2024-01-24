@@ -1,6 +1,6 @@
 # 建表脚本
-# @author <a href="https://github.com/liyupi">程序员鱼皮</a>
-# @from <a href="https://yupi.icu">编程导航知识星球</a>
+# @author <a href="https://github.com/PALE13">pale</a>
+#
 
 -- 创建库
 create database if not exists palebi;
@@ -28,6 +28,7 @@ create table if not exists chart
 (
     id           bigint auto_increment comment 'id' primary key,
     goal				 text  null comment '分析目标',
+    name        varchar(256) null comment '图表名称',
     chartData    text  null comment '图表数据',
     chartType	   varchar(128) null comment '图表类型',
     genChart		 text	 null comment '生成的图表数据',
