@@ -2,7 +2,6 @@ package com.pale.springbootinit.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.google.gson.Gson;
 import com.pale.springbootinit.annotation.AuthCheck;
 import com.pale.springbootinit.common.BaseResponse;
 import com.pale.springbootinit.common.DeleteRequest;
@@ -21,6 +20,7 @@ import com.pale.springbootinit.service.UserService;
 import com.pale.springbootinit.utils.ExcelUtils;
 import com.pale.springbootinit.utils.SqlUtils;
 import com.pale.springbootinit.constant.UserConstant;
+import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -30,7 +30,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.security.SecureRandom;
 
 /**
  * 帖子接口
@@ -67,97 +66,14 @@ public class ChartController {
         String chartName = genChartByAiRequest.getChartName();
         String goal = genChartByAiRequest.getGoal();
         String chartType = genChartByAiRequest.getChartType();
-
-        //效验
-        ThrowUtils.throwIf(StringUtils.isBlank(goal),ErrorCode.PARAMS_ERROR,"目标为空");
-        ThrowUtils.throwIf(StringUtils.isBlank(chartName) && chartName.length() > 100, ErrorCode.PARAMS_ERROR,"名称过长");
+        // 校验
+        ThrowUtils.throwIf(StringUtils.isBlank(goal), ErrorCode.PARAMS_ERROR, "图表分析目标为空");
+        ThrowUtils.throwIf(StringUtils.isNotBlank(chartName) && chartName.length() > 200, ErrorCode.PARAMS_ERROR, "图表名称过长");
         ThrowUtils.throwIf(StringUtils.isBlank(chartType), ErrorCode.PARAMS_ERROR, "图表类型为空");
-
-        // 获取登录⽤户信息
-        User loginUser = userService.getLoginUser(request);
-
-        //系统预设，现在无需写prompt，直接调用现有的模型（预设已在模型中写好）
-/*        final String prompt = "你是⼀个数据分析师和前端开发专家，接下来我会按照以下固定格式给你提供内容：\n" +
-                "分析需求：\n" +
-                "{数据分析的需求或者⽬标}\n" +
-                "原始数据：\n" +
-                "{csv格式的原始数据，⽤,作为分隔符}\n" +
-                "请根据这两部分内容，按照以下指定格式⽣成内容（此外不要输出任何多余的开头、结尾、注释等内容）\n" +
-                "【【【【【\n" +
-                "{前端 Echarts V5 的 option 配置对象的json格式代码，合理地将数据进⾏可视化}\n" +
-                "【【【【【\n" +
-                "最后给出明确的数据分析结论(至少500字)、越详细越好，不要⽣成多余的注释";*/
-
-        //现成的模型Id
-        long biModelId = 1749826533759311873L;
-        //构造用户输入
-        StringBuilder userInput = new StringBuilder();
-        userInput.append("分析需求：").append("\n");
-        //拼接分析目标
-        String userGoal = goal;
-        if(StringUtils.isNotBlank(chartType)){
-            userGoal += "，请使用" + chartType;
-        }
-        userInput.append(userGoal).append("\n");
-        userInput.append("原始数据：").append("\n");
-
-        // 压缩后的数据（将multipartFile转换为CSV格式）
-        String csvData = ExcelUtils.excelToCsv(multipartFile);
-        userInput.append(csvData).append("\n");
-
-        //调用AI模型
-        String result = aiManager.doChat(biModelId, userInput.toString());
-        String[] splits = result.split("【【【【【");
-        System.out.println(splits.length);
-        if(splits.length < 3){
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI错误");
-        }
-        //生成分析图表和分析结论
-        String genChart = splits[1].trim();
-        String genResult = splits[2].trim();
-
-        Chart chart = new Chart();
-        chart.setName(chartName);
-        chart.setGoal(goal);
-        chart.setChartData(csvData);
-        chart.setChartType(chartType);
-        chart.setGenChart(genChart);
-        chart.setGenResult(genResult);
-        chart.setUserId(loginUser.getId());
-
-        //生成的图表存入数据库
-        boolean saveResult = chartService.save(chart);
-        ThrowUtils.throwIf(!saveResult, ErrorCode.SYSTEM_ERROR, "图表保存失败");
-
-        //返回⽣成的图表和结果给前端
-        BiResponse biResponse = new BiResponse();
-        biResponse.setGenChart(genChart);
-        biResponse.setGenResult(genResult);
-        biResponse.setChartId(chart.getId());
+        BiResponse biResponse = chartService.genChartByAi(multipartFile, genChartByAiRequest, request);
+        ThrowUtils.throwIf(biResponse == null, ErrorCode.SYSTEM_ERROR, "AI生成错误");
         return ResultUtils.success(biResponse);
-
-
-//        File file = null;
-//        try {
-//
-//            // 返回可访问地址
-//            return ResultUtils.success("");
-//        } catch (Exception e) {
-//            log.error("file upload error, filepath = " );
-//            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "上传失败");
-//        } finally {
-//            if (file != null) {
-//                // 删除临时文件
-//                boolean delete = file.delete();
-//                if (!delete) {
-//                    log.error("file delete error, filepath = {}");
-//                }
-//            }
-//        }
     }
-
-
-
 
 
     // region 增删改查

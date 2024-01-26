@@ -2,6 +2,7 @@ package com.pale.springbootinit.manager;
 
 
 import com.pale.springbootinit.common.ErrorCode;
+import com.pale.springbootinit.config.AiModelConfig;
 import com.pale.springbootinit.exception.BusinessException;
 import com.yupi.yucongming.dev.client.YuCongMingClient;
 import com.yupi.yucongming.dev.common.BaseResponse;
@@ -19,6 +20,10 @@ public class AiManager {
     private YuCongMingClient yuCongMingClient;
 
 
+    @Resource
+    private AiModelConfig aiModelConfig;
+
+
     /**
      * AI对话
      *
@@ -26,9 +31,9 @@ public class AiManager {
      * @return
      */
 
-    public String doChat(long modelId, String message){
+    public String doChat(String message){
         DevChatRequest devChatRequest = new DevChatRequest();
-        devChatRequest.setModelId(modelId);
+        devChatRequest.setModelId(aiModelConfig.getModelId());
         devChatRequest.setMessage(message);
 
         // 获取响应

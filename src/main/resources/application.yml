@@ -93,3 +93,9 @@ yuapi:
   client:
     access-key: dye9kb80gftlzo7jss0eg3kv6s9mj5gw
     secret-key: 6c6osaanezb6vhya88tf23exl8mh5fdp
+
+
+# 要使用的模型ID
+ai:
+  model:
+    model-id: 1749826533759311873
