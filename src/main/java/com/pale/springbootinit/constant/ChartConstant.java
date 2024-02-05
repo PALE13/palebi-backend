@@ -38,4 +38,7 @@ public interface ChartConstant {
      * 图表默认名称的后缀长度
      */
     int DEFAULT_CHART_NAME_SUFFIX_LEN = 10;
+
+
+
 }

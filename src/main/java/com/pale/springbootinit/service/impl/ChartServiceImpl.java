@@ -5,6 +5,7 @@ import com.pale.springbootinit.common.ErrorCode;
 import com.pale.springbootinit.exception.BusinessException;
 import com.pale.springbootinit.exception.ThrowUtils;
 import com.pale.springbootinit.manager.AiManager;
+import com.pale.springbootinit.manager.RedisLimiterManager;
 import com.pale.springbootinit.mapper.ChartMapper;
 import com.pale.springbootinit.model.dto.chart.GenChartByAiRequest;
 import com.pale.springbootinit.model.entity.Chart;
@@ -37,16 +38,18 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
     @Resource
     private AiManager aiManager;
 
+    @Resource
+    private RedisLimiterManager redisLimiterManager;
+
     @Override
     public BiResponse genChartByAi(MultipartFile multipartFile, GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
         String chartName = genChartByAiRequest.getChartName();
         String goal = genChartByAiRequest.getGoal();
         String chartType = genChartByAiRequest.getChartType();
         User loginUser = userService.getLoginUser(request);
-        // 校验
-        ThrowUtils.throwIf(StringUtils.isBlank(goal), ErrorCode.PARAMS_ERROR, "图表分析目标为空");
-        ThrowUtils.throwIf(StringUtils.isNotBlank(chartName) && chartName.length() > 200, ErrorCode.PARAMS_ERROR, "图表名称过长");
-        ThrowUtils.throwIf(StringUtils.isBlank(chartType), ErrorCode.PARAMS_ERROR, "图表类型为空");
+
+        // 用户每秒限流
+        redisLimiterManager.doRateLimit("genChartByAi_" + loginUser.getId());
 
         // 无需Prompt，直接调用现有模型
         // 构造用户输入
@@ -63,6 +66,9 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
         // 压缩后的数据
         String csvData = ExcelUtils.excelToCsv(multipartFile);
         userInput.append(csvData).append("\n");
+
+        System.out.println(userInput.toString());
+
         // 调用AI生成分析结构
         String chartResult = aiManager.doChat(userInput.toString());
         // 解析内容

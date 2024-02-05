@@ -10,7 +10,6 @@ public class ResultUtils {
 
     /**
      * 成功
-     *
      * @param data
      * @param <T>
      * @return
@@ -31,7 +30,6 @@ public class ResultUtils {
 
     /**
      * 失败
-     *
      * @param code
      * @param message
      * @return
@@ -42,7 +40,6 @@ public class ResultUtils {
 
     /**
      * 失败
-     *
      * @param errorCode
      * @return
      */

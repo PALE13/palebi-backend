@@ -7,7 +7,7 @@
     <resultMap id="BaseResultMap" type="com.pale.springbootinit.model.entity.Chart">
             <id property="id" column="id" jdbcType="BIGINT"/>
             <result property="goal" column="goal" jdbcType="VARCHAR"/>
-            <result property="chartName" column="name" jdbcType="VARCHAR"/>
+            <result property="chartName" column="chartName" jdbcType="VARCHAR"/>
             <result property="chartData" column="chartData" jdbcType="VARCHAR"/>
             <result property="chartType" column="chartType" jdbcType="VARCHAR"/>
             <result property="genChart" column="genChart" jdbcType="VARCHAR"/>
@@ -23,4 +23,6 @@
         chartType,genChart,genResult,userId,
         createTime,updateTime,isDelete
     </sql>
+
+    <select id="queryChartData" resultType="java.util.Map">${queryChartSql}</select>
 </mapper>
