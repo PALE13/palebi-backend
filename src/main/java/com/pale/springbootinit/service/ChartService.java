@@ -14,4 +14,6 @@ import javax.servlet.http.HttpServletRequest;
 public interface ChartService extends IService<Chart> {
 
     BiResponse genChartByAi(MultipartFile multipartFile, GenChartByAiRequest genChartByAiRequest, HttpServletRequest request);
+
+    BiResponse genChartByAiAsync(MultipartFile multipartFile, GenChartByAiRequest genChartByAiRequest, HttpServletRequest request);
 }

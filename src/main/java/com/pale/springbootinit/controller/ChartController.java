@@ -47,14 +47,12 @@ public class ChartController {
 
     @Resource
     private ChartService chartService;
-
     @Resource
     private UserService userService;
 
 
-
     /**
-     * 智能分析
+     * 智能分析（同步）
      * @param multipartFile
      * @param genChartByAiRequest
      * @param request
@@ -73,18 +71,32 @@ public class ChartController {
         ThrowUtils.throwIf(StringUtils.isNotBlank(chartName) && chartName.length() > 200, ErrorCode.PARAMS_ERROR, "图表名称过长");
         ThrowUtils.throwIf(StringUtils.isBlank(chartType), ErrorCode.PARAMS_ERROR, "图表类型为空");
 
-        // 校验文件
-        long size = multipartFile.getSize();
-        String originalFilename = multipartFile.getOriginalFilename();
-        // 校验文件大小
-        final long ONE_MB = 1024 * 1024L;
-        ThrowUtils.throwIf(size > ONE_MB, ErrorCode.PARAMS_ERROR, "文件超过 1M");
-        // 校验文件后缀 aaa.png
-        String suffix = FileUtil.getSuffix(originalFilename);
-        final List<String> validFileSuffixList = Arrays.asList("png", "jpg", "svg", "webp", "jpeg");
-        ThrowUtils.throwIf(!validFileSuffixList.contains(suffix), ErrorCode.PARAMS_ERROR, "文件后缀非法");
-
         BiResponse biResponse = chartService.genChartByAi(multipartFile, genChartByAiRequest, request);
+        ThrowUtils.throwIf(biResponse == null, ErrorCode.SYSTEM_ERROR, "AI生成错误");
+        return ResultUtils.success(biResponse);
+    }
+
+    /**
+     * 智能分析（异步）
+     * @param multipartFile
+     * @param genChartByAiRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/gen/async")
+    public BaseResponse<BiResponse> getChartByAiAsync(@RequestPart("file") MultipartFile multipartFile,
+                                                 GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
+
+        String chartName = genChartByAiRequest.getChartName();
+        String goal = genChartByAiRequest.getGoal();
+        String chartType = genChartByAiRequest.getChartType();
+
+        // 校验
+        ThrowUtils.throwIf(StringUtils.isBlank(goal), ErrorCode.PARAMS_ERROR, "图表分析目标为空");
+        ThrowUtils.throwIf(StringUtils.isNotBlank(chartName) && chartName.length() > 200, ErrorCode.PARAMS_ERROR, "图表名称过长");
+        ThrowUtils.throwIf(StringUtils.isBlank(chartType), ErrorCode.PARAMS_ERROR, "图表类型为空");
+
+        BiResponse biResponse = chartService.genChartByAiAsync(multipartFile, genChartByAiRequest, request);
         ThrowUtils.throwIf(biResponse == null, ErrorCode.SYSTEM_ERROR, "AI生成错误");
         return ResultUtils.success(biResponse);
     }
@@ -140,7 +152,6 @@ public class ChartController {
 
     /**
      * 更新（仅管理员）
-     *
      * @param chartUpdateRequest
      * @return
      */
@@ -180,7 +191,6 @@ public class ChartController {
 
     /**
      * 分页获取列表（封装类）
-     *
      * @param chartQueryRequest
      * @param request
      * @return
@@ -199,7 +209,6 @@ public class ChartController {
 
     /**
      * 分页获取当前用户创建的资源列表
-     *
      * @param chartQueryRequest
      * @param request
      * @return
