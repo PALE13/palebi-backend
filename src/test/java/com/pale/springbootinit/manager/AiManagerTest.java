@@ -22,7 +22,7 @@ class AiManagerTest {
     @Test
     void doChat() {
         String answer = aiManager.doChat("分析需求：\n" +
-                "分析用户增长趋势，请使用柱状图\n" +
+                "分析网站用户增长情况，请使用柱状图\n" +
                 "原始数据：\n" +
                 "日期,用户数\n" +
                 "1号,10\n" +
@@ -31,13 +31,14 @@ class AiManagerTest {
                 "4号,50\n" +
                 "5号,0");
 
-        // 解析内容
-        String[] splits = answer.split(GEN_CONTENT_SPLITS);
-        // 首次生成的内容
-        String preGenChart = splits[GEN_CHART_IDX].trim();
-        String genResult = splits[GEN_RESULT_IDX].trim();
-        System.out.println(preGenChart);
-        System.out.println(genResult);
+        System.out.println(answer);
+//        // 解析内容
+//        String[] splits = answer.split(GEN_CONTENT_SPLITS);
+//        // 首次生成的内容
+//        String preGenChart = splits[GEN_CHART_IDX].trim();
+//        String genResult = splits[GEN_RESULT_IDX].trim();
+//        System.out.println(preGenChart);
+//        System.out.println(genResult);
 
     }
 }

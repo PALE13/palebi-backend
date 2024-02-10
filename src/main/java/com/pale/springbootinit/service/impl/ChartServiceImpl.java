@@ -2,6 +2,7 @@ package com.pale.springbootinit.service.impl;
 
 import cn.hutool.core.io.FileUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.pale.springbootinit.bizmq.BiMqMessageProducer;
 import com.pale.springbootinit.common.ErrorCode;
 import com.pale.springbootinit.exception.BusinessException;
 import com.pale.springbootinit.exception.ThrowUtils;
@@ -47,6 +48,8 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
     private RedisLimiterManager redisLimiterManager;
     @Resource
     private ThreadPoolExecutor threadPoolExecutor;
+    @Resource
+    private BiMqMessageProducer biMqMessageProducer;
 
 
     /**
@@ -220,15 +223,88 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
 
 
     /**
+     * 异步RabbitMQ 消息队列 图表生成
+     *
+     * @param multipartFile       用户上传的文件信息
+     * @param genChartByAiRequest 用户的需求
+     * @param request             http request
+     * @return
+     */
+    @Override
+    public BiResponse genChartByAiAsyncMq(MultipartFile multipartFile, GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
+        String chartName = genChartByAiRequest.getChartName();
+        String goal = genChartByAiRequest.getGoal();
+        String chartType = genChartByAiRequest.getChartType();
+        User loginUser = userService.getLoginUser(request);
+
+        // 校验
+        ThrowUtils.throwIf(StringUtils.isBlank(goal), ErrorCode.PARAMS_ERROR, "图表分析目标为空");
+        ThrowUtils.throwIf(StringUtils.isNotBlank(chartName) && chartName.length() > 200, ErrorCode.PARAMS_ERROR, "图表名称过长");
+        ThrowUtils.throwIf(StringUtils.isBlank(chartType), ErrorCode.PARAMS_ERROR, "图表类型为空");
+
+
+        //校验文件
+        this.checkMultipartFile(multipartFile);
+
+        // 用户每秒限流
+        redisLimiterManager.doRateLimit("genChartByAi_" + loginUser.getId());
+
+        // 无需Prompt，直接调用现有模型
+        // 构造用户输入
+        StringBuilder userInput = new StringBuilder();
+        userInput.append("分析需求：").append("\n");
+        // 拼接分析目标
+        String userGoal = goal;
+        if (StringUtils.isNotBlank(chartType)) {
+            userGoal += "，请使用" + chartType;
+        }
+        userInput.append(userGoal).append("\n");
+        userInput.append("原始数据：").append("\n");
+
+        // 压缩后的数据
+        String csvData = ExcelUtils.excelToCsv(multipartFile);
+        userInput.append(csvData).append("\n");
+
+        // 先插入数据到数据库
+        Chart chart = new Chart();
+        chartName = StringUtils.isBlank(chartName) ? ChartUtils.genDefaultChartName() : chartName;
+        chart.setGoal(goal);
+        chart.setChartData(csvData);
+        chart.setChartName(chartName);
+        chart.setChartType(chartType);
+        chart.setStatus(ChartStatusEnum.WAIT.getValue());
+        chart.setUserId(loginUser.getId());
+        boolean saveResult = this.save(chart);
+        ThrowUtils.throwIf(!saveResult, ErrorCode.SYSTEM_ERROR, "图表保存失败");
+
+        // 任务队列已满
+        if (threadPoolExecutor.getQueue().size() > threadPoolExecutor.getMaximumPoolSize()) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "当前任务队列已满");
+        }
+
+        Long newChartId = chart.getId();
+        //生产者向消息队列发送消息，为图表的id，消费者获取到该id就可以进行消费
+        biMqMessageProducer.sendMessage(String.valueOf(newChartId));
+
+        // 返回到前端
+        BiResponse biResponse = new BiResponse();
+        biResponse.setChartId(chart.getId());
+        return biResponse;
+    }
+
+
+
+    /**
      * 图表状态更新失败，将图表状态更新为failed
      * @param chartId
      * @param execMessage
      */
-    private void handleChartUpdateError(long chartId, String execMessage) {
+    @Override
+    public void handleChartUpdateError(long chartId, String execMessage) {
         Chart updateChartResult = new Chart();
         updateChartResult.setId(chartId);
         updateChartResult.setStatus(ChartStatusEnum.FAILED.getValue());
-        updateChartResult.setExecMessage("图表更新失败！！");
+        updateChartResult.setExecMessage(execMessage);
         boolean updateResult = this.updateById(updateChartResult);
         if (!updateResult) {
             log.error("更新图表失败状态失败" + chartId + "," + execMessage);
@@ -240,8 +316,8 @@ public class ChartServiceImpl extends ServiceImpl<ChartMapper, Chart>
      * 校验文件是否正确
      * @param multipartFile
      */
-
-    private void checkMultipartFile(MultipartFile multipartFile){
+    @Override
+    public void checkMultipartFile(MultipartFile multipartFile){
         // 校验文件
         long size = multipartFile.getSize();
         String originalFilename = multipartFile.getOriginalFilename();

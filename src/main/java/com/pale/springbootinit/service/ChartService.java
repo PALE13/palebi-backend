@@ -16,4 +16,10 @@ public interface ChartService extends IService<Chart> {
     BiResponse genChartByAi(MultipartFile multipartFile, GenChartByAiRequest genChartByAiRequest, HttpServletRequest request);
 
     BiResponse genChartByAiAsync(MultipartFile multipartFile, GenChartByAiRequest genChartByAiRequest, HttpServletRequest request);
+
+    BiResponse genChartByAiAsyncMq(MultipartFile multipartFile, GenChartByAiRequest genChartByAiRequest, HttpServletRequest request);
+
+    void handleChartUpdateError(long chartId, String execMessage);
+
+    void checkMultipartFile(MultipartFile multipartFile);
 }
